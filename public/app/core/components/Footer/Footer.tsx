@@ -100,19 +100,12 @@ export interface Props {
 }
 
 export const Footer = memo(({ customLinks, hideEdition }: Props) => {
-  const links = (customLinks || getFooterLinks()).concat(getVersionLinks(hideEdition));
   const styles = useStyles2(getStyles);
 
   return (
     <footer className={styles.footer}>
       <div className="text-center">
-        <ul className={styles.list}>
-          {links.map((link, index) => (
-            <li className={styles.listItem} key={index}>
-              <FooterItem item={link} />
-            </li>
-          ))}
-        </ul>
+        Made with love by Nexiona
       </div>
     </footer>
   );

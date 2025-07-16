@@ -10,7 +10,7 @@ export interface BrandComponentProps {
 }
 
 export const LoginLogo: FC<BrandComponentProps & { logo?: string }> = ({ className, logo }) => {
-  return <img className={className} src={`${logo ? logo : 'public/img/grafana_icon.svg'}`} alt="Grafana" />;
+  return null;
 };
 
 const LoginBackground: FC<BrandComponentProps> = ({ className, children }) => {
@@ -59,8 +59,8 @@ export class Branding {
   static LoginBackground = LoginBackground;
   static MenuLogo = MenuLogo;
   static LoginBoxBackground = LoginBoxBackground;
-  static AppTitle = 'Grafana';
-  static LoginTitle = 'Welcome to Grafana';
+  static AppTitle = 'Comforsa Webforms';
+  static LoginTitle = 'Comforsa Webforms';
   static HideEdition = false;
   static GetLoginSubTitle = (): null | string => {
     return null;
