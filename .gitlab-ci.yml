@@ -76,7 +76,9 @@ build-grafana:
 push-to-registry:
   stage: push
   tags: [wsl2]
-  needs: ["build-grafana"]
+  needs:
+    - job: build-grafana
+      optional: true  # Make build optional for testing
   rules:
     - if: $CI_PIPELINE_SOURCE == 'web'
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
