@@ -18,9 +18,39 @@ variables:
   GO111MODULE: "on"
 
 stages:
+  - .pre
   - debug
   - build
   - push
+
+check-existing-image:
+  stage: .pre
+  image: docker:27
+  tags: [wsl2]
+  services:
+    - name: docker:27-dind
+      alias: docker
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - echo "Checking for existing Grafana Docker image..."
+    - until docker info >/dev/null 2>&1; do echo "Waiting for Docker..."; sleep 1; done
+    - |
+      if docker images | grep -q "grafana/grafana-oss.*dev"; then
+        echo "✅ Found existing image grafana/grafana-oss:dev"
+        echo "SKIP_BUILD=true" > build.env
+        docker images | grep grafana
+      else
+        echo "❌ No existing image found, will need to build"
+        echo "SKIP_BUILD=false" > build.env
+      fi
+    - cat build.env
+  artifacts:
+    reports:
+      dotenv: build.env
+    expire_in: 1 hour
 
 debug-variables:
   stage: debug
@@ -40,11 +70,15 @@ debug-variables:
 build-grafana:
   stage: build
   tags: [wsl2]
+  needs: [check-existing-image]
   rules:
+    - if: $SKIP_BUILD == "true"
+      when: never  # Skip build if image exists
     - if: $CI_PIPELINE_SOURCE == 'web'
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: $CI_COMMIT_TAG
     - if: $CI_PIPELINE_SOURCE == 'push'
+    - if: $CI_PIPELINE_SOURCE == 'api'
     - when: manual  # Allow manual trigger for debugging
   before_script:
     # Wait for Docker service to be ready
@@ -77,8 +111,9 @@ push-to-registry:
   stage: push
   tags: [wsl2]
   needs:
+    - check-existing-image
     - job: build-grafana
-      optional: true  # Make build optional for testing
+      optional: true  # Build is optional when using existing image
   rules:
     - if: $CI_PIPELINE_SOURCE == 'web'
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
@@ -108,6 +143,9 @@ push-to-registry:
       fi
     - echo "Using image tag $CI_TAG"
   script:
+    - echo "Checking if image exists to push..."
+    - docker images | grep grafana || echo "No local image yet"
+
     - echo "Tagging Docker image for Nexiona registry"
     - docker tag ${GRAFANA_IMAGE} "$QA_REGISTRY/$CUSTOMER/$SERVICE:$CI_TAG"
     - docker tag ${GRAFANA_IMAGE} "$QA_REGISTRY/$CUSTOMER/$SERVICE:latest"
@@ -119,3 +157,10 @@ push-to-registry:
     - echo "Images pushed successfully:"
     - echo "  - $QA_REGISTRY/$CUSTOMER/$SERVICE:$CI_TAG"
     - echo "  - $QA_REGISTRY/$CUSTOMER/$SERVICE:latest"
+
+    # Clean up local image after successful push
+    - echo "Cleaning up local Docker image to ensure fresh build next time..."
+    - docker rmi ${GRAFANA_IMAGE} || true
+    - docker rmi "$QA_REGISTRY/$CUSTOMER/$SERVICE:$CI_TAG" || true
+    - docker rmi "$QA_REGISTRY/$CUSTOMER/$SERVICE:latest" || true
+    - echo "✅ Cleanup complete - next pipeline will build from scratch"
