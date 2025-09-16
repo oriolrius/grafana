@@ -1,14 +1,17 @@
-# Configuration for Docker executor with host Docker socket mount
-# The runner should be configured with:
-# volumes = ["/var/run/docker.sock:/var/run/docker.sock", "/cache"]
-# privileged = true
+# Using Docker-in-Docker service since socket mount is not working
 
-image: docker:27-dind
+image: docker:27
+
+services:
+  - name: docker:27-dind
+    alias: docker
+    command: ["--tls=false"]
 
 variables:
-  # Try without explicit DOCKER_HOST to let Docker find it
-  GRAFANA_IMAGE: grafana/grafana-oss:dev
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
   DOCKER_DRIVER: overlay2
+  GRAFANA_IMAGE: grafana/grafana-oss:dev
 
 stages:
   - build
@@ -23,19 +26,14 @@ build-grafana:
     - if: $CI_COMMIT_TAG
     - if: $CI_PIPELINE_SOURCE == 'push'
   before_script:
-    # Debug Docker socket
-    - ls -la /var/run/ || true
-    - ls -la /var/run/docker.sock || true
-    # Try to connect to Docker
-    - docker version || echo "Docker client works but daemon connection failed"
-    # Check if socket is mounted
-    - test -S /var/run/docker.sock && echo "Socket exists" || echo "Socket not found"
-    # Try with explicit socket path
-    - DOCKER_HOST=unix:///var/run/docker.sock docker info || echo "Direct socket connection failed"
+    # Wait for Docker service to be ready
+    - until docker info; do echo "Waiting for Docker..."; sleep 2; done
+    - echo "Docker is ready!"
+    - docker version
     # Install build dependencies
     - apk add --no-cache make git bash gcc g++ musl-dev nodejs npm go yarn
-    # Setup buildx if available
-    - docker buildx version 2>/dev/null || docker buildx create --use 2>/dev/null || true
+    # Setup buildx
+    - docker buildx create --driver docker-container --use || true
   script:
     - echo "Starting Grafana Docker build process..."
     - echo "Building Grafana Docker image with make build-docker-full"
