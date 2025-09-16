@@ -32,7 +32,7 @@ debug-variables:
     - echo "SERVICE=${SERVICE}"
     - echo "QA_REGISTRY=${QA_REGISTRY}"
     - echo "QA_REGISTRY_USER=${QA_REGISTRY_USER}"
-    - echo "QA_REGISTRY_PASSWORD exists: $([ -n '$QA_REGISTRY_PASSWORD' ] && echo 'yes' || echo 'no')"
+    - if [ -n "${QA_REGISTRY_PASSWORD}" ]; then echo "QA_REGISTRY_PASSWORD exists"; else echo "QA_REGISTRY_PASSWORD not set"; fi
     - echo "=========================="
 
 build-grafana:
@@ -87,7 +87,7 @@ push-to-registry:
     - echo "SERVICE=${SERVICE}"
     - echo "QA_REGISTRY=${QA_REGISTRY}"
     - echo "QA_REGISTRY_USER=${QA_REGISTRY_USER}"
-    - echo "QA_REGISTRY_PASSWORD is set: $([ -n "$QA_REGISTRY_PASSWORD" ] && echo 'yes' || echo 'no')"
+    - if [ -n "${QA_REGISTRY_PASSWORD}" ]; then echo "QA_REGISTRY_PASSWORD is set: yes"; else echo "QA_REGISTRY_PASSWORD is set: no"; fi
     - echo "CI_COMMIT_TAG=${CI_COMMIT_TAG}"
     - echo "CI_COMMIT_REF_SLUG=${CI_COMMIT_REF_SLUG}"
     - echo "GRAFANA_IMAGE=${GRAFANA_IMAGE}"
