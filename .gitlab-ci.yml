@@ -26,6 +26,8 @@ debug-variables:
   stage: debug
   image: alpine:latest
   tags: [wsl2]
+  rules:
+    - when: always
   script:
     - echo "=== CI Variables Debug ==="
     - echo "CUSTOMER=${CUSTOMER}"
