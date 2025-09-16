@@ -29,6 +29,7 @@ build-grafana:
     # Setup buildx if needed
     - docker buildx version || docker buildx create --use
   script:
+    - echo "Starting Grafana Docker build process..."
     - echo "Building Grafana Docker image with make build-docker-full"
     - make build-docker-full
     - echo "Build completed successfully"
