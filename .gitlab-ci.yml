@@ -1,4 +1,5 @@
-# Using Docker-in-Docker service since socket mount is not working
+# Simplified GitLab CI/CD for Grafana build and push
+# Single job approach to avoid Docker image isolation issues
 
 image: docker:27
 
@@ -12,108 +13,17 @@ variables:
   DOCKER_TLS_CERTDIR: ""
   DOCKER_DRIVER: overlay2
   GRAFANA_IMAGE: grafana/grafana-oss:dev
-  # Go proxy settings to improve module download reliability
+  # Go proxy settings for reliable module downloads
   GOPROXY: "https://proxy.golang.org,direct"
   GOSUMDB: "sum.golang.org"
   GO111MODULE: "on"
 
 stages:
-  - .pre
-  - debug
-  - build
-  - push
+  - deploy
 
-check-existing-image:
-  stage: .pre
-  image: docker:27
+build-and-push:
+  stage: deploy
   tags: [wsl2]
-  services:
-    - name: docker:27-dind
-      alias: docker
-      command: ["--tls=false"]
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-  script:
-    - echo "Checking for existing Grafana Docker image..."
-    - until docker info >/dev/null 2>&1; do echo "Waiting for Docker..."; sleep 1; done
-    - |
-      if docker images | grep -q "grafana/grafana-oss.*dev"; then
-        echo "✅ Found existing image grafana/grafana-oss:dev"
-        echo "SKIP_BUILD=true" > build.env
-        docker images | grep grafana
-      else
-        echo "❌ No existing image found, will need to build"
-        echo "SKIP_BUILD=false" > build.env
-      fi
-    - cat build.env
-  artifacts:
-    reports:
-      dotenv: build.env
-    expire_in: 1 hour
-
-debug-variables:
-  stage: debug
-  image: alpine:latest
-  tags: [wsl2]
-  rules:
-    - when: always
-  script:
-    - echo "=== CI Variables Debug ==="
-    - echo "CUSTOMER=${CUSTOMER}"
-    - echo "SERVICE=${SERVICE}"
-    - echo "QA_REGISTRY=${QA_REGISTRY}"
-    - echo "QA_REGISTRY_USER=${QA_REGISTRY_USER}"
-    - if [ -n "${QA_REGISTRY_PASSWORD}" ]; then echo "QA_REGISTRY_PASSWORD exists"; else echo "QA_REGISTRY_PASSWORD not set"; fi
-    - echo "=========================="
-
-build-grafana:
-  stage: build
-  tags: [wsl2]
-  needs: [check-existing-image]
-  rules:
-    - if: $SKIP_BUILD == "true"
-      when: never  # Skip build if image exists
-    - if: $CI_PIPELINE_SOURCE == 'web'
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-    - if: $CI_COMMIT_TAG
-    - if: $CI_PIPELINE_SOURCE == 'push'
-    - if: $CI_PIPELINE_SOURCE == 'api'
-    - when: manual  # Allow manual trigger for debugging
-  before_script:
-    # Wait for Docker service to be ready
-    - until docker info; do echo "Waiting for Docker..."; sleep 2; done
-    - echo "Docker is ready!"
-    - docker version
-    # Install build dependencies
-    - apk add --no-cache make git bash gcc g++ musl-dev nodejs npm go yarn
-    # Setup buildx
-    - docker buildx create --driver docker-container --use || true
-  script:
-    - echo "Starting Grafana Docker build process..."
-    - echo "Building Grafana Docker image with make build-docker-full"
-    # Add build args including network retry and Go proxy settings
-    - |
-      DOCKER_BUILD_ARGS="--load --build-arg GOPROXY=$GOPROXY --build-arg GOSUMDB=$GOSUMDB --network=host" \
-      make build-docker-full || \
-      (echo "Build failed, retrying..." && sleep 10 && \
-       DOCKER_BUILD_ARGS="--load --build-arg GOPROXY=$GOPROXY --build-arg GOSUMDB=$GOSUMDB --network=host" \
-       make build-docker-full)
-    - echo "Build completed successfully"
-    - echo "Verifying image was created"
-    - docker images | grep grafana
-  artifacts:
-    reports:
-      dotenv: build.env
-    expire_in: 1 hour
-
-push-to-registry:
-  stage: push
-  tags: [wsl2]
-  needs:
-    - check-existing-image
-    - job: build-grafana
-      optional: true  # Build is optional when using existing image
   rules:
     - if: $CI_PIPELINE_SOURCE == 'web'
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
@@ -121,46 +31,64 @@ push-to-registry:
     - if: $CI_PIPELINE_SOURCE == 'push'
     - if: $CI_PIPELINE_SOURCE == 'api'  # For glab ci run
   before_script:
-    # Debug: Check available variables
-    - echo "=== Debugging CI Variables ==="
-    - echo "CUSTOMER=${CUSTOMER}"
-    - echo "SERVICE=${SERVICE}"
-    - echo "QA_REGISTRY=${QA_REGISTRY}"
-    - echo "QA_REGISTRY_USER=${QA_REGISTRY_USER}"
-    - if [ -n "${QA_REGISTRY_PASSWORD}" ]; then echo "QA_REGISTRY_PASSWORD is set = yes"; else echo "QA_REGISTRY_PASSWORD is set = no"; fi
-    - echo "CI_COMMIT_TAG=${CI_COMMIT_TAG}"
-    - echo "CI_COMMIT_REF_SLUG=${CI_COMMIT_REF_SLUG}"
-    - echo "GRAFANA_IMAGE=${GRAFANA_IMAGE}"
-    - echo "==========================="
+    # Wait for Docker service to be ready
+    - until docker info; do echo "Waiting for Docker..."; sleep 2; done
+    - echo "Docker is ready!"
+    - docker version
+
+    # Install build dependencies
+    - apk add --no-cache make git bash gcc g++ musl-dev nodejs npm go yarn
+
+    # Setup buildx
+    - docker buildx create --driver docker-container --use || true
 
     # Login to registry
     - echo "$QA_REGISTRY_PASSWORD" | docker login -u "$QA_REGISTRY_USER" --password-stdin "$QA_REGISTRY"
+
+    # Set CI tag
     - |
       if [ -n "$CI_COMMIT_TAG" ]; then
         export CI_TAG="$CI_COMMIT_TAG"
       else
         export CI_TAG="$CI_COMMIT_REF_SLUG"
       fi
-    - echo "Using image tag $CI_TAG"
+    - echo "Using image tag: $CI_TAG"
   script:
-    - echo "Checking if image exists to push..."
-    - docker images | grep grafana || echo "No local image yet"
+    # Check if image already exists (for faster re-runs)
+    - |
+      if docker images | grep -q "grafana/grafana-oss.*dev"; then
+        echo "✅ Found existing image, skipping build"
+        docker images | grep grafana
+      else
+        echo "📦 Building Grafana Docker image..."
+        DOCKER_BUILD_ARGS="--load --build-arg GOPROXY=$GOPROXY --build-arg GOSUMDB=$GOSUMDB --network=host" \
+        make build-docker-full || \
+        (echo "Build failed, retrying..." && sleep 10 && \
+         DOCKER_BUILD_ARGS="--load --build-arg GOPROXY=$GOPROXY --build-arg GOSUMDB=$GOSUMDB --network=host" \
+         make build-docker-full)
+        echo "✅ Build completed successfully"
+        docker images | grep grafana
+      fi
 
-    - echo "Tagging Docker image for Nexiona registry"
+    # Tag images for registry
+    - echo "🏷️  Tagging Docker images for Nexiona registry..."
     - docker tag ${GRAFANA_IMAGE} "$QA_REGISTRY/$CUSTOMER/$SERVICE:$CI_TAG"
     - docker tag ${GRAFANA_IMAGE} "$QA_REGISTRY/$CUSTOMER/$SERVICE:latest"
 
-    - echo "Pushing to Nexiona registry"
+    # Push to registry
+    - echo "📤 Pushing to Nexiona registry..."
     - docker push "$QA_REGISTRY/$CUSTOMER/$SERVICE:$CI_TAG"
     - docker push "$QA_REGISTRY/$CUSTOMER/$SERVICE:latest"
 
-    - echo "Images pushed successfully:"
+    - echo "✅ Images pushed successfully:"
     - echo "  - $QA_REGISTRY/$CUSTOMER/$SERVICE:$CI_TAG"
     - echo "  - $QA_REGISTRY/$CUSTOMER/$SERVICE:latest"
 
-    # Clean up local image after successful push
-    - echo "Cleaning up local Docker image to ensure fresh build next time..."
+    # Clean up local images for next fresh build
+    - echo "🧹 Cleaning up local Docker images..."
     - docker rmi ${GRAFANA_IMAGE} || true
     - docker rmi "$QA_REGISTRY/$CUSTOMER/$SERVICE:$CI_TAG" || true
     - docker rmi "$QA_REGISTRY/$CUSTOMER/$SERVICE:latest" || true
     - echo "✅ Cleanup complete - next pipeline will build from scratch"
+  after_script:
+    - docker logout $QA_REGISTRY || true
