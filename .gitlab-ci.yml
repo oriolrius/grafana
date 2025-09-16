@@ -32,30 +32,15 @@ build-and-push:
     - if: $CI_PIPELINE_SOURCE == 'push'
     - if: $CI_PIPELINE_SOURCE == 'api'  # For glab ci run
   before_script:
-    # Wait for Docker service to be ready
     - until docker info; do echo "Waiting for Docker..."; sleep 2; done
     - echo "Docker is ready!"
     - docker version
-
-    # Install build dependencies
     - apk add --no-cache make git bash gcc g++ musl-dev nodejs npm go yarn
-
-    # Setup buildx
     - docker buildx create --driver docker-container --use || true
-
-    # Login to registry
     - echo "$QA_REGISTRY_PASSWORD" | docker login -u "$QA_REGISTRY_USER" --password-stdin "$QA_REGISTRY"
-
-    # Set CI tag
-    - |
-      if [ -n "$CI_COMMIT_TAG" ]; then
-        export CI_TAG="$CI_COMMIT_TAG"
-      else
-        export CI_TAG="$CI_COMMIT_REF_SLUG"
-      fi
-    - echo "Using image tag: $CI_TAG"
+    - 'if [ -n "$CI_COMMIT_TAG" ]; then export CI_TAG="$CI_COMMIT_TAG"; else export CI_TAG="$CI_COMMIT_REF_SLUG"; fi'
+    - 'echo "Using image tag: $CI_TAG"'
   script:
-    # Check if image already exists (for faster re-runs)
     - |
       if docker images | grep -q "grafana/grafana-oss.*dev"; then
         echo "✅ Found existing image, skipping build"
@@ -70,22 +55,15 @@ build-and-push:
         echo "✅ Build completed successfully"
         docker images | grep grafana
       fi
-
-    # Tag images for registry
     - echo "🏷️  Tagging Docker images for Nexiona registry..."
     - docker tag ${GRAFANA_IMAGE} "$QA_REGISTRY/$CUSTOMER/$SERVICE:$CI_TAG"
     - docker tag ${GRAFANA_IMAGE} "$QA_REGISTRY/$CUSTOMER/$SERVICE:latest"
-
-    # Push to registry
     - echo "📤 Pushing to Nexiona registry..."
     - docker push "$QA_REGISTRY/$CUSTOMER/$SERVICE:$CI_TAG"
     - docker push "$QA_REGISTRY/$CUSTOMER/$SERVICE:latest"
-
     - echo "✅ Images pushed successfully:"
     - echo "  - $QA_REGISTRY/$CUSTOMER/$SERVICE:$CI_TAG"
     - echo "  - $QA_REGISTRY/$CUSTOMER/$SERVICE:latest"
-
-    # Clean up local images for next fresh build
     - echo "🧹 Cleaning up local Docker images..."
     - docker rmi ${GRAFANA_IMAGE} || true
     - docker rmi "$QA_REGISTRY/$CUSTOMER/$SERVICE:$CI_TAG" || true
