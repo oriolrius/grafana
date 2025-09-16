@@ -1,6 +1,8 @@
 module github.com/grafana/grafana/apps/alerting/notifications
 
-go 1.24.4
+go 1.24.2
+
+toolchain go1.24.5
 
 replace github.com/grafana/grafana => ../../..
 

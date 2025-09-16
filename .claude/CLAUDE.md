@@ -177,3 +177,37 @@ make build-docker-full
 ```
 
 This creates `grafana/grafana-oss:dev` Docker image locally.
+
+## Current Status & Issues
+
+### ✅ Working Components
+- **Docker Build**: Completes successfully in ~5 minutes (674MB image)
+- **CI Pipeline Structure**: Debug, build, and push stages properly configured
+- **Variable Passing**: All required variables (CUSTOMER, SERVICE, QA_REGISTRY, etc.) pass correctly
+
+### ❌ Identified Issues
+
+#### 1. Network/DNS Resolution (Primary Blocker)
+- **Error**: `dial tcp: lookup harbor.nexiona.com on 10.255.255.254:53: no such host`
+- **Cause**: GitLab runner cannot resolve the private registry domain
+- **Impact**: Push job fails during docker login step
+- **Solution Needed**: Network configuration or VPN access for runner
+
+#### 2. Job Isolation Architecture
+- **Problem**: Push job runs in isolated container without access to built image
+- **Evidence**: Pipeline #19 - build succeeded, push failed after DNS error
+- **GitLab Limitation**: Jobs don't share Docker images by default
+- **Solution Options**:
+  - Combine build+push into single job
+  - Use Docker image artifacts to pass images between jobs
+  - Use external registry accessible during build
+
+### Test Results Summary
+
+**Pipeline #14 (2042875032)**: ✅ Build succeeded, no push attempted
+**Pipeline #19 (2042942911)**: ✅ Build succeeded, ❌ Push failed (DNS)
+
+### Immediate Next Steps
+1. **Fix Network Access**: Configure runner access to `harbor.nexiona.com`
+2. **Architectural Fix**: Implement image sharing or combined job approach
+3. **Testing**: Validate full build-to-push workflow
