@@ -4,6 +4,7 @@ import { GrafanaTheme2 } from '@grafana/data';
 import { Components } from '@grafana/e2e-selectors';
 import { ScopesContextValue } from '@grafana/runtime';
 import { Stack, useStyles2 } from '@grafana/ui';
+import { contextSrv } from 'app/core/core';
 import { ScopesSelector } from 'app/features/scopes/selector/ScopesSelector';
 
 import { NavToolbarSeparator } from '../NavToolbar/NavToolbarSeparator';
@@ -18,6 +19,11 @@ export interface Props {
 
 export function SingleTopBarActions({ actions, breadcrumbActions, scopes }: Props) {
   const styles = useStyles2(getStyles);
+  const isAdmin = contextSrv.hasRole('Admin');
+
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <div data-testid={Components.NavToolbar.container} className={styles.actionsBar}>

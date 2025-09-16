@@ -10,7 +10,7 @@ export interface BrandComponentProps {
 }
 
 export const LoginLogo: FC<BrandComponentProps & { logo?: string }> = ({ className, logo }) => {
-  return null;
+  return <img className={className} src="public/img/custom/comforsa_logo.svg" alt="Comforsa" />;
 };
 
 const LoginBackground: FC<BrandComponentProps> = ({ className, children }) => {
@@ -24,18 +24,23 @@ const LoginBackground: FC<BrandComponentProps> = ({ className, children }) => {
       right: 0,
       bottom: 0,
       top: 0,
-      background: `url(public/img/g8_login_${theme.isDark ? 'dark' : 'light'}.svg)`,
-      backgroundPosition: 'top center',
-      backgroundSize: 'auto',
-      backgroundRepeat: 'no-repeat',
-
-      opacity: 0,
+      background: theme.isDark 
+        ? 'linear-gradient(135deg, #1a1a1a 0%, #2a1a1a 50%, #3a1a1a 100%)'
+        : 'linear-gradient(135deg, #ffffff 0%, #f8f8f8 25%, #ffebeb 50%, #ffe0e0 75%, #ffd0d0 100%)',
+      opacity: 1,
       transition: 'opacity 3s ease-in-out',
-
-      [theme.breakpoints.up('md')]: {
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
-      },
+    },
+    '&:after': {
+      content: '""',
+      position: 'fixed',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      top: 0,
+      background: theme.isDark
+        ? 'radial-gradient(circle at 20% 80%, rgba(255, 100, 100, 0.1) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255, 150, 150, 0.05) 0%, transparent 50%)'
+        : 'radial-gradient(circle at 20% 80%, rgba(255, 0, 0, 0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255, 100, 100, 0.05) 0%, transparent 50%), radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.3) 0%, transparent 70%)',
+      opacity: 1,
     },
   });
 
@@ -43,7 +48,7 @@ const LoginBackground: FC<BrandComponentProps> = ({ className, children }) => {
 };
 
 const MenuLogo: FC<BrandComponentProps> = ({ className }) => {
-  return <img className={className} src="public/img/grafana_icon.svg" alt="Grafana" />;
+  return <img className={className} src="public/img/custom/comforsa_logo.svg" alt="Comforsa" />;
 };
 
 const LoginBoxBackground = () => {

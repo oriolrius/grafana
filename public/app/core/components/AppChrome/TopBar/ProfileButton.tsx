@@ -10,7 +10,6 @@ import { t } from 'app/core/internationalization';
 
 import { ThemeSelectorDrawer } from '../../ThemeSelector/ThemeSelectorDrawer';
 import { enrichWithInteractionTracking } from '../MegaMenu/utils';
-import { NewsContainer } from '../News/NewsDrawer';
 
 import { TopNavBarMenu } from './TopNavBarMenu';
 
@@ -22,7 +21,6 @@ export interface Props {
 export function ProfileButton({ profileNode, onToggleKioskMode }: Props) {
   const styles = useStyles2(getStyles);
   const node = enrichWithInteractionTracking(cloneDeep(profileNode), false);
-  const [showNewsDrawer, onToggleShowNewsDrawer] = useToggle(false);
   const [showThemeDrawer, onToggleThemeDrawer] = useToggle(false);
 
   if (!node) {
@@ -40,13 +38,6 @@ export function ProfileButton({ profileNode, onToggleKioskMode }: Props) {
           onClick={onToggleKioskMode}
           label={t('profile.enable-kiosk-mode', 'Enable kiosk mode')}
         />
-        {config.newsFeedEnabled && (
-          <MenuItem
-            icon="rss"
-            onClick={onToggleShowNewsDrawer}
-            label={t('navigation.rss-button', 'Latest from the blog')}
-          />
-        )}
         <Menu.Divider />
         {!config.auth.disableSignoutMenu && (
           <MenuItem
@@ -70,7 +61,6 @@ export function ProfileButton({ profileNode, onToggleKioskMode }: Props) {
           aria-label={t('navigation.profile.aria-label', 'Profile')}
         />
       </Dropdown>
-      {showNewsDrawer && <NewsContainer onClose={onToggleShowNewsDrawer} />}
       {showThemeDrawer && <ThemeSelectorDrawer onClose={onToggleThemeDrawer} />}
     </>
   );

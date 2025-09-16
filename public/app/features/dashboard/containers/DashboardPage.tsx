@@ -10,6 +10,7 @@ import { notifyApp } from 'app/core/actions';
 import { ScrollRefElement } from 'app/core/components/NativeScrollbar';
 import { Page } from 'app/core/components/Page/Page';
 import { GrafanaContext, GrafanaContextType } from 'app/core/context/GrafanaContext';
+import { contextSrv } from 'app/core/core';
 import { createErrorNotification } from 'app/core/copy/appNotification';
 import { getKioskMode } from 'app/core/navigation/kiosk';
 import { GrafanaRouteComponentProps } from 'app/core/navigation/types';
@@ -405,6 +406,7 @@ export class UnthemedDashboardPage extends PureComponent<Props, State> {
               isEditable={!!dashboard.meta.canEdit}
               viewPanel={viewPanel}
               editPanel={editPanel}
+              hidePanelMenus={!contextSrv.hasRole('Admin')}
             />
           )}
 

@@ -64,6 +64,7 @@ export const SingleTopBar = memo(function SingleTopBar({
   const breadcrumbs = buildBreadcrumbs(sectionNav, pageNav, homeNav);
   const unifiedHistoryEnabled = config.featureToggles.unifiedHistory;
   const isSmallScreen = !useMediaQueryMinWidth('sm');
+  const isAdmin = contextSrv.hasRole('Admin');
 
   return (
     <>
@@ -82,32 +83,46 @@ export const SingleTopBar = memo(function SingleTopBar({
               </Stack>
             </ToolbarButton>
           )}
-          <Breadcrumbs breadcrumbs={breadcrumbs} className={styles.breadcrumbsWrapper} />
+          {isAdmin && <Breadcrumbs breadcrumbs={breadcrumbs} className={styles.breadcrumbsWrapper} />}
           {!showToolbarLevel && breadcrumbActions}
         </Stack>
 
-        <Stack
-          gap={0.5}
-          alignItems="center"
-          justifyContent={'flex-end'}
-          flex={1}
-          data-testid={!showToolbarLevel ? Components.NavToolbar.container : undefined}
-          minWidth={{ xs: 'unset', lg: 0 }}
-        >
-          <TopSearchBarCommandPaletteTrigger />
-          {unifiedHistoryEnabled && !isSmallScreen && <HistoryContainer />}
-          {!isSmallScreen && <QuickAdd />}
-          {enrichedHelpNode && (
-            <Dropdown overlay={() => <TopNavBarMenu node={enrichedHelpNode} />} placement="bottom-end">
-              <ToolbarButton iconOnly icon="question-circle" aria-label={t('navigation.help.aria-label', 'Help')} />
-            </Dropdown>
-          )}
-          <NavToolbarSeparator />
-          {config.featureToggles.extensionSidebar && !isSmallScreen && <ExtensionToolbarItem />}
-          {!showToolbarLevel && actions}
-          {!contextSrv.user.isSignedIn && <SignInLink />}
-          {profileNode && <ProfileButton profileNode={profileNode} onToggleKioskMode={onToggleKioskMode} />}
-        </Stack>
+        {isAdmin && (
+          <Stack
+            gap={0.5}
+            alignItems="center"
+            justifyContent={'flex-end'}
+            flex={1}
+            data-testid={!showToolbarLevel ? Components.NavToolbar.container : undefined}
+            minWidth={{ xs: 'unset', lg: 0 }}
+          >
+            <TopSearchBarCommandPaletteTrigger />
+            {unifiedHistoryEnabled && !isSmallScreen && <HistoryContainer />}
+            {!isSmallScreen && <QuickAdd />}
+            {enrichedHelpNode && (
+              <Dropdown overlay={() => <TopNavBarMenu node={enrichedHelpNode} />} placement="bottom-end">
+                <ToolbarButton iconOnly icon="question-circle" aria-label={t('navigation.help.aria-label', 'Help')} />
+              </Dropdown>
+            )}
+            <NavToolbarSeparator />
+            {config.featureToggles.extensionSidebar && !isSmallScreen && <ExtensionToolbarItem />}
+            {!showToolbarLevel && actions}
+            {!contextSrv.user.isSignedIn && <SignInLink />}
+            {profileNode && <ProfileButton profileNode={profileNode} onToggleKioskMode={onToggleKioskMode} />}
+          </Stack>
+        )}
+        {!isAdmin && (
+          <Stack
+            gap={0.5}
+            alignItems="center"
+            justifyContent={'flex-end'}
+            flex={1}
+            minWidth={{ xs: 'unset', lg: 0 }}
+          >
+            {!contextSrv.user.isSignedIn && <SignInLink />}
+            {profileNode && <ProfileButton profileNode={profileNode} onToggleKioskMode={onToggleKioskMode} />}
+          </Stack>
+        )}
       </div>
       {showToolbarLevel && (
         <SingleTopBarActions scopes={scopes} actions={actions} breadcrumbActions={breadcrumbActions} />

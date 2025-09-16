@@ -104,8 +104,8 @@ export const Footer = memo(({ customLinks, hideEdition }: Props) => {
 
   return (
     <footer className={styles.footer}>
-      <div className="text-center">
-        Made with love by Nexiona
+      <div className={styles.footerText}>
+        Made with <img src="public/img/custom/heart-solid.svg" alt="love" className={styles.heartIcon} /> by Nexiona
       </div>
     </footer>
   );
@@ -146,6 +146,20 @@ const getStyles = (theme: GrafanaTheme2) => ({
     [theme.breakpoints.down('md')]: {
       display: 'none',
     },
+  }),
+  footerText: css({
+    textAlign: 'center',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing(0.5),
+  }),
+  heartIcon: css({
+    width: '14px',
+    height: '14px',
+    display: 'inline-block',
+    verticalAlign: 'middle',
+    filter: 'brightness(0) saturate(100%) invert(27%) sepia(85%) saturate(3334%) hue-rotate(346deg) brightness(104%) contrast(95%)',
   }),
   list: css({
     listStyle: 'none',

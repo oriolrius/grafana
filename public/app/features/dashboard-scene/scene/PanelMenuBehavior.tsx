@@ -63,6 +63,12 @@ const METRICS_DRILLDOWN_CATEGORY = 'metrics-drilldown';
  */
 export function panelMenuBehavior(menu: VizPanelMenu) {
   const asyncFunc = async () => {
+    // Hide menu for non-admin users
+    if (!contextSrv.hasRole('Admin')) {
+      menu.setState({ items: [] });
+      return;
+    }
+
     // hm.. add another generic param to SceneObject to specify parent type?
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const panel = menu.parent as VizPanel;
