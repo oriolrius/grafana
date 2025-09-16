@@ -1,6 +1,3 @@
-# Simplified GitLab CI/CD for Grafana build and push
-# Single job approach to avoid Docker image isolation issues
-
 image: docker:27
 
 services:
@@ -12,6 +9,8 @@ variables:
   DOCKER_HOST: tcp://docker:2375
   DOCKER_TLS_CERTDIR: ""
   DOCKER_DRIVER: overlay2
+  SERVICE: grafana
+  CUSTOMER: nexiona
   GRAFANA_IMAGE: grafana/grafana-oss:dev
   # Go proxy settings for reliable module downloads
   GOPROXY: "https://proxy.golang.org,direct"
@@ -24,22 +23,28 @@ stages:
 build-and-push:
   stage: deploy
   tags: [wsl2]
-  artifacts: {}  # Explicitly disable artifacts to avoid warnings
+  artifacts: {}
   rules:
     - if: $CI_PIPELINE_SOURCE == 'web'
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: $CI_COMMIT_TAG
     - if: $CI_PIPELINE_SOURCE == 'push'
-    - if: $CI_PIPELINE_SOURCE == 'api'  # For glab ci run
+    - if: $CI_PIPELINE_SOURCE == 'api'
   before_script:
     - until docker info; do echo "Waiting for Docker..."; sleep 2; done
     - echo "Docker is ready!"
     - docker version
-    - apk add --no-cache make git bash gcc g++ musl-dev nodejs npm go yarn
+    - apk add --no-cache make git bash gcc g++ musl-dev nodejs npm go yarn jq
     - docker buildx create --driver docker-container --use || true
     - echo "$QA_REGISTRY_PASSWORD" | docker login -u "$QA_REGISTRY_USER" --password-stdin "$QA_REGISTRY"
     - 'if [ -n "$CI_COMMIT_TAG" ]; then export CI_TAG="$CI_COMMIT_TAG"; else export CI_TAG="$CI_COMMIT_REF_SLUG"; fi'
     - 'echo "Using image tag: $CI_TAG"'
+    - 'export PACKAGE_VERSION=$(cat package.json | jq -r .version)'
+    - 'echo "Package version: $PACKAGE_VERSION"'
+    - 'export SERVICE="${SERVICE:-grafana}-$PACKAGE_VERSION"'
+    - 'echo "Service name with version: $SERVICE"'
+    - 'export CUSTOMER="${CUSTOMER:-nexiona}"'
+    - 'echo "Customer: $CUSTOMER"'
   script:
     - |
       if docker images | grep -q "grafana/grafana-oss.*dev"; then
