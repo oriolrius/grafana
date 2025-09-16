@@ -12,6 +12,10 @@ variables:
   DOCKER_TLS_CERTDIR: ""
   DOCKER_DRIVER: overlay2
   GRAFANA_IMAGE: grafana/grafana-oss:dev
+  # Go proxy settings to improve module download reliability
+  GOPROXY: "https://proxy.golang.org,direct"
+  GOSUMDB: "sum.golang.org"
+  GO111MODULE: "on"
 
 stages:
   - build
@@ -37,7 +41,13 @@ build-grafana:
   script:
     - echo "Starting Grafana Docker build process..."
     - echo "Building Grafana Docker image with make build-docker-full"
-    - DOCKER_BUILD_ARGS="--load" make build-docker-full
+    # Add build args including network retry and Go proxy settings
+    - |
+      DOCKER_BUILD_ARGS="--load --build-arg GOPROXY=$GOPROXY --build-arg GOSUMDB=$GOSUMDB --network=host" \
+      make build-docker-full || \
+      (echo "Build failed, retrying..." && sleep 10 && \
+       DOCKER_BUILD_ARGS="--load --build-arg GOPROXY=$GOPROXY --build-arg GOSUMDB=$GOSUMDB --network=host" \
+       make build-docker-full)
     - echo "Build completed successfully"
     - echo "Verifying image was created"
     - docker images | grep grafana
