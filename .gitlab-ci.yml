@@ -37,7 +37,7 @@ build-grafana:
   script:
     - echo "Starting Grafana Docker build process..."
     - echo "Building Grafana Docker image with make build-docker-full"
-    - make build-docker-full
+    - DOCKER_BUILD_ARGS="--load" make build-docker-full
     - echo "Build completed successfully"
     - echo "Verifying image was created"
     - docker images | grep grafana
