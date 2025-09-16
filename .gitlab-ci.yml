@@ -24,6 +24,7 @@ stages:
 build-and-push:
   stage: deploy
   tags: [wsl2]
+  artifacts: {}  # Explicitly disable artifacts to avoid warnings
   rules:
     - if: $CI_PIPELINE_SOURCE == 'web'
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
